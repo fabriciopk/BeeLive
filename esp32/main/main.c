@@ -31,7 +31,11 @@
 #include <ds18x20.h>
 #include "dht11.h"
 
-static const char *TAG = "MQTT_EXAMPLE";
+static const char *TAG = "HIVE_STATUS";
+static const char *WIFI_TAG = "WIFI";
+static const char *READING_TAG = "SENSORS";
+static const char *MQTT_TAG = "MQTT";
+
 #define DOUT_GPIO   18
 #define PD_SCK_GPIO 19
 static EventGroupHandle_t wifi_event_group;
@@ -213,54 +217,88 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
         if (wifi_retry_cnt < 10) {
             esp_wifi_connect();
             wifi_retry_cnt++;
-            ESP_LOGI(TAG, "Retrt to connect to Access Point...");
+            ESP_LOGI(WIFI_TAG, "Retrt to connect to Access Point...");
         } else {
             xEventGroupSetBits(wifi_event_group, WIFI_FAIL_BIT);
         }
-        ESP_LOGI(TAG,"Fail to connect to Access Point.");
+        ESP_LOGI(WIFI_TAG,"Fail to connect to Access Point.");
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
-        ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
+        ESP_LOGI(WIFI_TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
         wifi_retry_cnt = 0;
         xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_BIT);
     }
 }
 
+void wifi_init_sta(void)
+{
+    ESP_LOGI(TAG, "Starting esp32 wifi bringup...");
+    wifi_event_group = xEventGroupCreate();
 
+    ESP_ERROR_CHECK(esp_netif_init());
+
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    esp_netif_create_default_wifi_sta();
+
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+
+    esp_event_handler_instance_t instance_any_id;
+    esp_event_handler_instance_t instance_got_ip;
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
+                                                        ESP_EVENT_ANY_ID,
+                                                        &wifi_event_handler,
+                                                        NULL,
+                                                        &instance_any_id));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
+                                                        IP_EVENT_STA_GOT_IP,
+                                                        &wifi_event_handler,
+                                                        NULL,
+                                                        &instance_got_ip));
+
+    wifi_config_t wifi_config = {
+        .sta = {
+            .ssid = CONFIG_WIFI_SSID,
+            .password = CONFIG_WIFI_PASSWORD,
+            .pmf_cfg = {
+                .capable = true,
+                .required = false
+            },
+        },
+    };
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
+    ESP_ERROR_CHECK(esp_wifi_start());
+
+    ESP_LOGI(WIFI_TAG, "wifi_init_sta finished.");
+
+    EventBits_t bits = xEventGroupWaitBits(wifi_event_group,
+            WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
+            pdFALSE,
+            pdFALSE,
+            portMAX_DELAY);
+
+    if (bits & WIFI_CONNECTED_BIT) {
+        ESP_LOGI(WIFI_TAG, "connected to ap SSID:%s",  CONFIG_WIFI_SSID);
+    } else if (bits & WIFI_FAIL_BIT) {
+        ESP_LOGI(WIFI_TAG, "Failed to connect to SSID:%s", CONFIG_WIFI_SSID);
+    } else {
+        ESP_LOGE(WIFI_TAG, "An unexpected event occurred during wifi connection.");
+    }
+
+    /* The event will not be processed after unregister */
+    ESP_ERROR_CHECK(esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, instance_got_ip));
+    ESP_ERROR_CHECK(esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, instance_any_id));
+    vEventGroupDelete(wifi_event_group);
+}
 
 
 void app_main(void)
 {
-    // ESP_LOGI(TAG, "[APP] -------------------- Startup..");
-    // ESP_LOGI(TAG, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
-    // ESP_LOGI(TAG, "[APP] IDF version: %s", esp_get_idf_version());
+    ESP_LOGI(TAG, "----- Hive status firmware Startup... -----");
+    ESP_LOGI(TAG, "Free memory: %d bytes", esp_get_free_heap_size());
+    ESP_LOGI(TAG, "esp-IDF version: %s", esp_get_idf_version());
 
-    // esp_log_level_set("*", ESP_LOG_INFO);
-    // esp_log_level_set("MQTT_CLIENT", ESP_LOG_VERBOSE);
-    // esp_log_level_set("MQTT_EXAMPLE", ESP_LOG_VERBOSE);
-    // esp_log_level_set("TRANSPORT_TCP", ESP_LOG_VERBOSE);
-    // esp_log_level_set("TRANSPORT_SSL", ESP_LOG_VERBOSE);
-    // esp_log_level_set("TRANSPORT", ESP_LOG_VERBOSE);
-    // esp_log_level_set("OUTBOX", ESP_LOG_VERBOSE);
-
-    // ESP_ERROR_CHECK(nvs_flash_init());
-    // ESP_ERROR_CHECK(esp_netif_init());
-    // ESP_ERROR_CHECK(esp_event_loop_create_default());
-
-    // /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.
-    //  * Read "Establishing Wi-Fi or Ethernet Connection" section in
-    //  * examples/protocols/README.md for more information about this function.
-    //  */
-    // ESP_ERROR_CHECK(example_connect());
-
-    // esp_mqtt_client_config_t mqtt_cfg = {
-    //     .uri = CONFIG_BROKER_URL,
-    // };
-    // esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
-    // esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
-    // esp_mqtt_client_start(client);
-
-    //Initialize NVS
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
       ESP_ERROR_CHECK(nvs_flash_erase());
@@ -268,14 +306,12 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
-
-
+    /*Wifi module configuration and start method*/
+    wifi_init_sta();
     
     xTaskCreate(read_ds18x20, "read_ds18x20", configMINIMAL_STACK_SIZE * 4, NULL, 5, NULL);
     xTaskCreate(read_dht11, "read_dht11", configMINIMAL_STACK_SIZE * 4, NULL, 5, NULL);
     xTaskCreate(task_sensors_read, "task_sensors_read", configMINIMAL_STACK_SIZE * 4, NULL, 5, NULL);
-
-
 
     while (true) {
     /* Wake up in 2 seconds, or when button is pressed */

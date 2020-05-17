@@ -24,7 +24,7 @@
 
 #include "esp_timer.h"
 #include "driver/gpio.h"
-#include "rom/ets_sys.h"
+#include "esp32/rom/ets_sys.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 

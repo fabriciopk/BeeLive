@@ -1,4 +1,4 @@
-menu "HIVE STATUS CONFIG"
+menu "Hive-Status project configuration"
 
     config BROKER_URL
         string "Broker URL"

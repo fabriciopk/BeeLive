@@ -1,3 +1,7 @@
+#
+# Automatically generated file. DO NOT EDIT.
+# Espressif IoT Development Framework (ESP-IDF) Project Configuration
+#
 CONFIG_IDF_CMAKE=y
 CONFIG_IDF_TARGET="esp32"
 CONFIG_IDF_TARGET_ESP32=y
@@ -116,18 +120,20 @@ CONFIG_PARTITION_TABLE_MD5=y
 # end of Partition Table
 
 #
-# Example Configuration
+# Hive-Status project configuration
 #
-CONFIG_BROKER_URL="mqtt://192.168.0.15:1883"
-# end of Example Configuration
+CONFIG_BROKER_URL="mqtt://mqtt.eclipse.org"
+CONFIG_WIFI_SSID="myssid"
+CONFIG_WIFI_PASSWORD="mypassword"
+# end of Hive-Status project configuration
 
 #
 # Example Connection Configuration
 #
 CONFIG_EXAMPLE_CONNECT_WIFI=y
 # CONFIG_EXAMPLE_CONNECT_ETHERNET is not set
-CONFIG_EXAMPLE_WIFI_SSID="1014_2Ghz"
-CONFIG_EXAMPLE_WIFI_PASSWORD="nacompilavei"
+CONFIG_EXAMPLE_WIFI_SSID="myssid"
+CONFIG_EXAMPLE_WIFI_PASSWORD="mypassword"
 CONFIG_EXAMPLE_CONNECT_IPV6=y
 CONFIG_EXAMPLE_CONNECT_IPV6_PREF_LOCAL_LINK=y
 # CONFIG_EXAMPLE_CONNECT_IPV6_PREF_GLOBAL is not set
@@ -355,7 +361,7 @@ CONFIG_ETH_DMA_BUFFER_SIZE=512
 CONFIG_ETH_DMA_RX_BUFFER_NUM=10
 CONFIG_ETH_DMA_TX_BUFFER_NUM=10
 CONFIG_ETH_USE_SPI_ETHERNET=y
-CONFIG_ETH_SPI_ETHERNET_DM9051=y
+# CONFIG_ETH_SPI_ETHERNET_DM9051 is not set
 # CONFIG_ETH_USE_OPENETH is not set
 # end of Ethernet
 
@@ -451,7 +457,7 @@ CONFIG_ESP32_WIFI_MGMT_SBUF_NUM=32
 # CONFIG_ESP32_WIFI_DEBUG_LOG_ENABLE is not set
 CONFIG_ESP32_WIFI_IRAM_OPT=y
 CONFIG_ESP32_WIFI_RX_IRAM_OPT=y
-# CONFIG_ESP32_WIFI_ENABLE_WPA3_SAE is not set
+CONFIG_ESP32_WIFI_ENABLE_WPA3_SAE=y
 # end of Wi-Fi
 
 #
@@ -997,6 +1003,12 @@ CONFIG_WPA_MBEDTLS_CRYPTO=y
 # CONFIG_WPA_TESTING_OPTIONS is not set
 # CONFIG_WPA_TLS_V12 is not set
 # end of Supplicant
+
+#
+# OneWire
+#
+CONFIG_ONEWIRE_CRC8_TABLE=y
+# end of OneWire
 # end of Component config
 
 #
