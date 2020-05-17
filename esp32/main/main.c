@@ -39,111 +39,78 @@ static const char *MQTT_TAG = "MQTT";
 #define DOUT_GPIO   18
 #define PD_SCK_GPIO 19
 static EventGroupHandle_t wifi_event_group;
+static int wifi_retry_cnt = 0;
 /* The event group allows multiple bits for each event, but we only care about two events:
  * - we are connected to the AP with an IP
  * - we failed to connect after the maximum amount of retries */
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
 
+static const int MAX_SENSORS = 8;
+static const gpio_num_t SENSOR_GPIO = 17;
+
 
 typedef struct {
-	double dht_temperature;
-	double humidity;
-    double internal_temperature;
-    double total_weight;
+	int32_t raw_hx711_data;
+    float ds18x20_temp;
+    int dht11_status;
+    int dht_11temperature;
+    int dht11_humidity;
 } env_data_t;
 
-void task_sensors_read(void *ignore)
-{
-    hx711_t dev = {
+
+void read_sensors(void *params) {
+    DHT11_init(GPIO_NUM_5);
+    ds18x20_addr_t addrs[MAX_SENSORS];
+    float ds18x20_temps[MAX_SENSORS];
+    int sensor_count;
+
+    hx711_t hx711_dev = {
         .dout = DOUT_GPIO,
         .pd_sck = PD_SCK_GPIO,
         .gain = HX711_GAIN_A_64
     };
+    
+    while(1) {
+        struct dht11_reading dht = DHT11_read();
+        sensor_count = ds18x20_scan_devices(SENSOR_GPIO, addrs, MAX_SENSORS);
+        if (sensor_count == 1) {
+            ds18x20_measure_and_read_multi(SENSOR_GPIO, addrs, sensor_count, ds18x20_temps);
+            float temp_c = ds18x20_temps[0];
+            printf("Sensor ds18x20 reports %f deg C\n", temp_c);
+        } else {
+            printf("No sensors detected!\n");
+        }
+        while (1)
+        {
+            esp_err_t r = hx711_init(&hx711_dev);
+            if (r == ESP_OK)
+                break;
+            printf("Could not initialize HX711: %d (%s)\n", r, esp_err_to_name(r));
+            vTaskDelay(500 / portTICK_PERIOD_MS);
+        }
 
-    while (1)
-    {
-        esp_err_t r = hx711_init(&dev);
-        if (r == ESP_OK)
-            break;
-        printf("Could not initialize HX711: %d (%s)\n", r, esp_err_to_name(r));
-        vTaskDelay(500 / portTICK_PERIOD_MS);
-    }
-
-    while (1)
-    {
-        esp_err_t r = hx711_wait(&dev, 500);
+        esp_err_t r = hx711_wait(&hx711_dev, 500);
         if (r != ESP_OK)
         {
             printf("Device not found: %d (%s)\n", r, esp_err_to_name(r));
-            continue;
         }
 
-        int32_t data;
-        r = hx711_read_data(&dev, &data);
+        int32_t hx711_data;
+        r = hx711_read_data(&hx711_dev, &hx711_data);
         if (r != ESP_OK)
         {
             printf("Could not read data: %d (%s)\n", r, esp_err_to_name(r));
-            continue;
         }
 
-        printf("Raw data: %d\n", data);
+        printf("DHT11 Temperature is %d \n", dht.temperature);
+        printf("DHT11 Humidity is %d\n", dht.humidity);
+        printf("DHT11 Status code is %d\n", dht.status);
+        printf("HX711 Raw data: %d\n", hx711_data);
 
-        vTaskDelay(500 / portTICK_PERIOD_MS);
-    }
-}
+        esp_event_post(ESP_EVENT_ANY_ID, MQTT_EVENT_CONNECTED, NULL, 0, 0);
 
-
-void read_ds18x20(void *ignore) {
-    static const int MAX_SENSORS = 8;
-    static const gpio_num_t SENSOR_GPIO = 17;
-    static const int RESCAN_INTERVAL = 8;
-    ds18x20_addr_t addrs[MAX_SENSORS];
-    float temps[MAX_SENSORS];
-    int sensor_count;
-
-    while (1) {
-        sensor_count = ds18x20_scan_devices(SENSOR_GPIO, addrs, MAX_SENSORS);
-        vTaskDelay(1500 / portTICK_PERIOD_MS);
-        if (sensor_count < 1)
-            printf("No sensors detected!\n");
-        else
-        {
-            printf("%d sensors detected:\n", sensor_count);
-        }
-
-        for (int i = 0; i < RESCAN_INTERVAL; i++)
-            {
-                ds18x20_measure_and_read_multi(SENSOR_GPIO, addrs, sensor_count, temps);
-                for (int j = 0; j < sensor_count; j++)
-                {
-                    // The ds18x20 address is a 64-bit integer, but newlib-nano
-                    // printf does not support printing 64-bit values, so we
-                    // split it up into two 32-bit integers and print them
-                    // back-to-back to make it look like one big hex number.
-                    uint32_t addr0 = addrs[j] >> 32;
-                    uint32_t addr1 = addrs[j];
-                    float temp_c = temps[j];
-                    float temp_f = (temp_c * 1.8) + 32;
-                    /* float is used in printf(). you need non-default configuration in
-                     * sdkconfig for ESP8266, which is enabled by default for this
-                     * example. see sdkconfig.defaults.esp8266
-                     */
-                    printf("  Sensor %08x%08x reports %f deg C (%f deg F)\n", addr0, addr1, temp_c, temp_f);
-                }
-            }
-    }
-}
-
-void read_dht11(void *ignore) { 
-    DHT11_init(GPIO_NUM_5);
-    while(1) {
-        printf("\n---------------------DHT11--------------------------\n");
-        printf("Temperature is %d \n", DHT11_read().temperature);
-        printf("Humidity is %d\n", DHT11_read().humidity);
-        printf("Status code is %d\n", DHT11_read().status);
-        printf("---------------------DHT11--------------------------\n");
-        vTaskDelay(3000 / portTICK_PERIOD_MS);
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
     }
 }
 
@@ -206,7 +173,41 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 }
 
 
-static int wifi_retry_cnt = 0;
+static void mqtt_app_start(void)
+{
+    esp_mqtt_client_config_t mqtt_cfg = {
+        .uri = CONFIG_BROKER_URL,
+    };
+#if CONFIG_BROKER_URL_FROM_STDIN
+    char line[128];
+
+    if (strcmp(mqtt_cfg.uri, "FROM_STDIN") == 0) {
+        int count = 0;
+        printf("Please enter url of mqtt broker\n");
+        while (count < 128) {
+            int c = fgetc(stdin);
+            if (c == '\n') {
+                line[count] = '\0';
+                break;
+            } else if (c > 0 && c < 127) {
+                line[count] = c;
+                ++count;
+            }
+            vTaskDelay(10 / portTICK_PERIOD_MS);
+        }
+        mqtt_cfg.uri = line;
+        printf("Broker url: %s\n", line);
+    } else {
+        ESP_LOGE(TAG, "Configuration mismatch: wrong broker url");
+        abort();
+    }
+#endif /* CONFIG_BROKER_URL_FROM_STDIN */
+
+    esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
+    esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
+    esp_mqtt_client_start(client);
+}
+
 
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data)
@@ -308,10 +309,9 @@ void app_main(void)
 
     /*Wifi module configuration and start method*/
     wifi_init_sta();
-    
-    xTaskCreate(read_ds18x20, "read_ds18x20", configMINIMAL_STACK_SIZE * 4, NULL, 5, NULL);
-    xTaskCreate(read_dht11, "read_dht11", configMINIMAL_STACK_SIZE * 4, NULL, 5, NULL);
-    xTaskCreate(task_sensors_read, "task_sensors_read", configMINIMAL_STACK_SIZE * 4, NULL, 5, NULL);
+    mqtt_app_start();
+
+    xTaskCreate(read_sensors, "read_sensors", configMINIMAL_STACK_SIZE * 4, NULL, 5, NULL);
 
     while (true) {
     /* Wake up in 2 seconds, or when button is pressed */
