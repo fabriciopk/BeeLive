@@ -12,6 +12,10 @@
 #include "esp_event.h"
 #include "esp_netif.h"
 #include "protocol_examples_common.h"
+#include "esp_sleep.h"
+
+#include "cJSON.h"
+
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -59,12 +63,26 @@ typedef struct {
 } env_data_t;
 
 
+static char *message(env_data_t data) {
+    cJSON *root = cJSON_CreateObject();
+    esp_chip_info_t chip_info;
+    esp_chip_info(&chip_info);
+    cJSON_AddStringToObject(root, "version", IDF_VER);
+    cJSON_AddNumberToObject(root, "hx_value", data.raw_hx711_data);
+    cJSON_AddNumberToObject(root, "ds_temp", data.ds18x20_temp);
+    cJSON_AddNumberToObject(root, "dht_status", data.dht11_status);
+    cJSON_AddNumberToObject(root, "dht_tmp", data.dht_11temperature);
+    cJSON_AddNumberToObject(root, "dht_hum", data.dht11_humidity);
+    return cJSON_Print(root);
+}
+
 void read_sensors(void *params) {
+    esp_mqtt_client_handle_t client = *((esp_mqtt_client_handle_t*)params);
     DHT11_init(GPIO_NUM_5);
     ds18x20_addr_t addrs[MAX_SENSORS];
     float ds18x20_temps[MAX_SENSORS];
     int sensor_count;
-
+    env_data_t data;
     hx711_t hx711_dev = {
         .dout = DOUT_GPIO,
         .pd_sck = PD_SCK_GPIO,
@@ -77,6 +95,7 @@ void read_sensors(void *params) {
         if (sensor_count == 1) {
             ds18x20_measure_and_read_multi(SENSOR_GPIO, addrs, sensor_count, ds18x20_temps);
             float temp_c = ds18x20_temps[0];
+            data.ds18x20_temp = temp_c;
             printf("Sensor ds18x20 reports %f deg C\n", temp_c);
         } else {
             printf("No sensors detected!\n");
@@ -109,6 +128,14 @@ void read_sensors(void *params) {
         printf("HX711 Raw data: %d\n", hx711_data);
 
         esp_event_post(ESP_EVENT_ANY_ID, MQTT_EVENT_CONNECTED, NULL, 0, 0);
+        data.raw_hx711_data = hx711_data;
+        data.dht11_status = dht.status;
+        data.dht_11temperature = dht.temperature;
+        data.dht11_humidity = dht.humidity;
+
+        // printf(">>>>>>>>>> %s", message(data));
+        esp_mqtt_client_publish(client, "/topic/qos1", message(data), 0, 0, 0);
+
 
         vTaskDelay(5000 / portTICK_PERIOD_MS);
     }
@@ -170,42 +197,6 @@ static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) {
     ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%d", base, event_id);
     mqtt_event_handler_cb(event_data);
-}
-
-
-static void mqtt_app_start(void)
-{
-    esp_mqtt_client_config_t mqtt_cfg = {
-        .uri = CONFIG_BROKER_URL,
-    };
-#if CONFIG_BROKER_URL_FROM_STDIN
-    char line[128];
-
-    if (strcmp(mqtt_cfg.uri, "FROM_STDIN") == 0) {
-        int count = 0;
-        printf("Please enter url of mqtt broker\n");
-        while (count < 128) {
-            int c = fgetc(stdin);
-            if (c == '\n') {
-                line[count] = '\0';
-                break;
-            } else if (c > 0 && c < 127) {
-                line[count] = c;
-                ++count;
-            }
-            vTaskDelay(10 / portTICK_PERIOD_MS);
-        }
-        mqtt_cfg.uri = line;
-        printf("Broker url: %s\n", line);
-    } else {
-        ESP_LOGE(TAG, "Configuration mismatch: wrong broker url");
-        abort();
-    }
-#endif /* CONFIG_BROKER_URL_FROM_STDIN */
-
-    esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
-    esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
-    esp_mqtt_client_start(client);
 }
 
 
@@ -309,14 +300,28 @@ void app_main(void)
 
     /*Wifi module configuration and start method*/
     wifi_init_sta();
-    mqtt_app_start();
 
-    xTaskCreate(read_sensors, "read_sensors", configMINIMAL_STACK_SIZE * 4, NULL, 5, NULL);
 
-    while (true) {
-    /* Wake up in 2 seconds, or when button is pressed */
-        vTaskDelay(1500 / portTICK_PERIOD_MS);
-        // esp_event_post(ESP_EVENT_ANY_ID, MQTT_EVENT_CONNECTED, NULL, 0, 0);
-        // esp_mqtt_client_publish(client, "/topic/qos0", "data2", 0, 0, 0);
-    }
+    esp_mqtt_client_config_t mqtt_cfg = {
+        .uri = CONFIG_BROKER_URL,
+    };
+
+    esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
+    esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
+    esp_mqtt_client_start(client);
+
+    xTaskCreate(read_sensors, "read_sensors", configMINIMAL_STACK_SIZE * 4, (void*)&client, 5, NULL);
+
+    const int deep_sleep_sec = 10;
+    vTaskDelay(10000 / portTICK_PERIOD_MS);
+    esp_mqtt_client_publish(client, "/topic/qos1", "data2", 0, 0, 0);
+    ESP_ERROR_CHECK(esp_wifi_stop());
+    ESP_LOGI(TAG, "Entering deep sleep for %d seconds", deep_sleep_sec);
+    esp_deep_sleep(1000000LL * deep_sleep_sec);
+
+    // while (true) {
+    // /* Wake up in 2 seconds, or when button is pressed */
+    //     vTaskDelay(1500 / portTICK_PERIOD_MS);
+    //     esp_mqtt_client_publish(client, "/topic/qos1", "data2", 0, 0, 0);
+    // }
 }
