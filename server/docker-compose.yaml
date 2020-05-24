@@ -4,6 +4,9 @@ networks:
     my-network:
       driver: bridge
 
+volumes:
+    influxdb:
+
 services:
     mqtt:
         image: toke/mosquitto
@@ -14,18 +17,28 @@ services:
         networks:
             - my-network
     influxdb:
-        image: bitnami/influxdb:latest
+        image: influxdb:latest
+        ports:
+            - 8083:8083
+            - 8086:8086
+            - 8090:8090
         environment:
             - INFLUXDB_HTTP_AUTH_ENABLED=false
-            - INFLUXDB_ADMIN_USER_PASSWORD=password123
-            - INFLUXDB_DB=honey_data
+            - INFLUXDB_DB=honeycomb2
+            - INFLUXDB_USER=root
+            - INFLUXDB_USER_PASSWORD=root
         networks:
             - my-network
-    honey-app:
-        build: .
-        environment:
-            - INFLUXDB_HTTP_AUTH_ENABLED=false
-            - INFLUXDB_ADMIN_USER_PASSWORD=password123
-            - INFLUXDB_DB=honey_data
+        volumes:
+            - influxdb:/var/lib/influxdb
+    web:
+        build: ./web
+        ports:
+            - 5000:5000
         networks:
             - my-network
+    backend:
+        build: ./backend
+        networks:
+            - my-network
+
