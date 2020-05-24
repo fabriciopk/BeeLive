@@ -1,2 +1,2 @@
 Flask==1.1.2
-influxdb-client==1.7.0
+influxdb

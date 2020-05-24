@@ -10,7 +10,6 @@ volumes:
 services:
     mqtt:
         image: toke/mosquitto
-        container_name: mqtt
         ports:
         - 1883:1883
         restart: unless-stopped
@@ -19,9 +18,7 @@ services:
     influxdb:
         image: influxdb:latest
         ports:
-            - 8083:8083
             - 8086:8086
-            - 8090:8090
         environment:
             - INFLUXDB_HTTP_AUTH_ENABLED=false
             - INFLUXDB_DB=honeycomb2
@@ -35,10 +32,14 @@ services:
         build: ./web
         ports:
             - 5000:5000
+        depends_on:
+            - backend
         networks:
             - my-network
     backend:
         build: ./backend
         networks:
             - my-network
-
+        depends_on:
+            - mqtt
+            - influxdb

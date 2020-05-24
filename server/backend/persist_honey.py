@@ -46,7 +46,7 @@ def on_connect(client, userdata, flags, rc):
 # log_level
 
 logging.basicConfig(level=logging.DEBUG)
-influx_client = InfluxDBClient('localhost', 8086, 'admin', 'teste123', database='honeycomb')
+influx_client = InfluxDBClient('influxdb', 8086, 'admin', 'teste123', database='honeycomb')
 try:
     influx_client.create_database('honeycomb')
 except:
@@ -54,5 +54,5 @@ except:
 client = mqtt.Client()
 client.on_connect = on_connect
 client.on_message = lambda client, userdata, msg: persists(msg)
-client.connect("localhost", 1883, 60)
+client.connect("mqtt", 1883, 60)
 client.loop_forever()

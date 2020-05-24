@@ -15,7 +15,7 @@ def index():
     return render_template('index.html')
 
 
-def influx_data(host='localhost', port=8086):
+def influx_data(host='influxdb', port=8086):
     query = 'select * from pot;'
     user = 'root'
     password = 'root'
@@ -30,7 +30,7 @@ def data():
 
 @application.route('/chart-data')
 def chart_data():
-    data = influx_data()
+    # data = influx_data()
     def generate_random_data():
         while True:
             json_data = json.dumps({})
@@ -40,4 +40,4 @@ def chart_data():
 
 
 if __name__ == '__main__':
-    application.run(debug=True, threaded=True)
+    application.run(host='0.0.0.0', debug=True, threaded=True)
