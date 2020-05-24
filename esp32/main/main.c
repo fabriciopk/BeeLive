@@ -133,11 +133,9 @@ void read_sensors(void *params) {
         data.dht_11temperature = dht.temperature;
         data.dht11_humidity = dht.humidity;
 
-        // printf(">>>>>>>>>> %s", message(data));
-        esp_mqtt_client_publish(client, "/topic/qos1", message(data), 0, 0, 0);
+        esp_mqtt_client_publish(client, "/honey_topic", message(data), 0, 0, 0);
 
-
-        vTaskDelay(5000 / portTICK_PERIOD_MS);
+        vTaskDelay(10000 / portTICK_PERIOD_MS);
     }
 }
 
@@ -151,18 +149,6 @@ static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
     switch (event->event_id) {
         case MQTT_EVENT_CONNECTED:
             ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-            printf("Raw data: ------------------------------------\n");
-            msg_id = esp_mqtt_client_publish(client, "/topic/qos1", "data_3", 0, 1, 0);
-            ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
-
-            msg_id = esp_mqtt_client_subscribe(client, "/topic/qos0", 0);
-            ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
-
-            msg_id = esp_mqtt_client_subscribe(client, "/topic/qos1", 1);
-            ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
-
-            msg_id = esp_mqtt_client_unsubscribe(client, "/topic/qos1");
-            ESP_LOGI(TAG, "sent unsubscribe successful, msg_id=%d", msg_id);
             break;
         case MQTT_EVENT_DISCONNECTED:
             ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
@@ -170,8 +156,6 @@ static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
 
         case MQTT_EVENT_SUBSCRIBED:
             ESP_LOGI(TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
-            msg_id = esp_mqtt_client_publish(client, "/topic/qos0", "data", 0, 0, 0);
-            ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
             break;
         case MQTT_EVENT_UNSUBSCRIBED:
             ESP_LOGI(TAG, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
@@ -314,14 +298,12 @@ void app_main(void)
 
     const int deep_sleep_sec = 10;
     vTaskDelay(10000 / portTICK_PERIOD_MS);
-    esp_mqtt_client_publish(client, "/topic/qos1", "data2", 0, 0, 0);
-    ESP_ERROR_CHECK(esp_wifi_stop());
-    ESP_LOGI(TAG, "Entering deep sleep for %d seconds", deep_sleep_sec);
-    esp_deep_sleep(1000000LL * deep_sleep_sec);
 
-    // while (true) {
-    // /* Wake up in 2 seconds, or when button is pressed */
-    //     vTaskDelay(1500 / portTICK_PERIOD_MS);
-    //     esp_mqtt_client_publish(client, "/topic/qos1", "data2", 0, 0, 0);
-    // }
+    // ESP_ERROR_CHECK(esp_wifi_stop());
+    // ESP_LOGI(TAG, "Entering deep sleep for %d seconds", deep_sleep_sec);
+    // esp_deep_sleep(1000000LL * deep_sleep_sec);
+
+    while (true) {
+        vTaskDelay(1500 / portTICK_PERIOD_MS);
+    }
 }
