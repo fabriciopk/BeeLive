@@ -2,38 +2,42 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Creating Real-Time Charts with Flask</title>
+    <title>Hive-status</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.min.css" rel="stylesheet">
 </head>
 <body>
-<div class="container">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-body">
-                    <canvas id="canvas"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 <!--suppress JSUnresolvedLibraryURL -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.0/jquery.min.js"></script>
 <!--suppress JSUnresolvedLibraryURL -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/js/bootstrap.min.js"></script>
 <!--suppress JSUnresolvedLibraryURL -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.min.js"></script>
 <script>
     $(document).ready(function () {
-        const config = {
+        const env_cfg = {
             type: 'line',
             data: {
                 labels: [],
-                datasets: [{
-                    label: "Random Dataset",
+                datasets: [
+                {
+                    label: "Internal Temperature(°C)",
                     backgroundColor: 'rgb(255, 99, 132)',
                     borderColor: 'rgb(255, 99, 132)',
+                    data: [],
+                    fill: false,
+                },
+                {
+                    label: "External temperature(°C)",
+                    backgroundColor: 'rgb(255, 0, 0)',
+                    borderColor: 'rgb(255, 0, 0)',
+                    data: [],
+                    fill: false,
+                },
+                {
+                    label: "External Humidity(%)",
+                    backgroundColor: 'rgb(0, 102, 255)',
+                    borderColor: 'rgb(0, 102, 255)',
                     data: [],
                     fill: false,
                 }],
@@ -42,7 +46,7 @@
                 responsive: true,
                 title: {
                     display: true,
-                    text: 'Creating Real-Time Charts with Flask'
+                    text: 'Bee hive monitoring tool'
                 },
                 tooltips: {
                     mode: 'index',
@@ -71,9 +75,57 @@
             }
         };
 
-        const context = document.getElementById('canvas').getContext('2d');
+        const weight_cfg = {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                {
+                    label: "Hive Weight(Kg)",
+                    backgroundColor: 'rgb(0, 204, 0)',
+                    borderColor: 'rgb(0, 204, 0)',
+                    data: [],
+                    fill: false
+                }
+                ],
+            },
+            options: {
+                responsive: true,
+                tooltips: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                hover: {
+                    mode: 'nearest',
+                    intersect: true
+                },
+                scales: {
+                    xAxes: [{
+                        display: true,
+                        scaleLabel: {
+                            display: true,
+                            labelString: 'Time'
+                        }
+                    }],
+                    yAxes: [{
+                        display: true,
+                        scaleLabel: {
+                            display: true,
+                            labelString: 'Value'
+                        }
+                    }]
+                }
+            }
+        };
 
-        const lineChart = new Chart(context, config);
+        const environment = new Chart(
+            document.getElementById('environment').getContext('2d'), 
+            env_cfg
+        );
+        const weight = new Chart(
+            document.getElementById('weight').getContext('2d'), 
+            weight_cfg
+        );
 
         const source = new EventSource("/chart-data");
 
@@ -86,11 +138,22 @@
           data.map(
               function(item){
                 if(item.dht_status == 0){
-                    config.data.labels.push(item.time);
-                    config.data.datasets[0].data.push(item.ds_temp);
+                    var date = new Date(item.time);
+                    // Enviroment graph
+                    date.setMinutes(date.getMinutes() - new Date().getTimezoneOffset());
+                    env_cfg.data.labels.push(date.toLocaleString());
+                    env_cfg.data.datasets[0].data.push(item.ds_temp);
+                    env_cfg.data.datasets[1].data.push(item.dht_tmp);
+                    env_cfg.data.datasets[2].data.push(item.dht_hum);
+                    // Weight graph
+                    console.log(date.toLocaleString())
+                    weight_cfg.data.labels.push(date.toLocaleString());
+                    weight_cfg.data.datasets[0].data.push(item.hx_value);
                 }
               }
           )
+          environment.update();
+          weight.update();
         })
         .catch(err => {
           // Do something for an error here
@@ -98,15 +161,31 @@
 
         source.onmessage = function (event) {
             const data = JSON.parse(event.data);
-            if (config.data.labels.length === 20) {
-                config.data.labels.shift();
-                config.data.datasets[0].data.shift();
+            if (env_cfg.data.labels.length === 20) {
+                env_cfg.data.labels.shift();
+                env_cfg.data.datasets[0].data.shift();
             }
-            config.data.labels.push(data.time);
-            config.data.datasets[0].data.push(data.value);
-            lineChart.update();
+            env_cfg.data.labels.push(data.time);
+            env_cfg.data.datasets[0].data.push(data.value);
+            environment.update();
         }
     });
 </script>
+
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <canvas id="environment"></canvas>
+                </div>
+                <div class="card-body">
+                    <canvas id="weight"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 </body>
 </html>
