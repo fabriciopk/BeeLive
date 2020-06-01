@@ -1,7 +1,3 @@
-/* 
-    MQTT (over TCP) Example
-*/
-
 #include <stdio.h>
 #include <stdint.h>
 #include <stddef.h>
@@ -15,7 +11,6 @@
 #include "esp_sleep.h"
 
 #include "cJSON.h"
-
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -62,6 +57,7 @@ typedef struct {
     int dht11_humidity;
 } env_data_t;
 
+QueueHandle_t  eventQueue = NULL;
 
 static char *message(env_data_t data) {
     cJSON *root = cJSON_CreateObject();
@@ -77,6 +73,9 @@ static char *message(env_data_t data) {
 }
 
 void read_sensors(void *params) {
+    uint32_t err_counter = 1;
+    xQueueSend(eventQueue, (void *)&err_counter, (TickType_t )0);
+
     esp_mqtt_client_handle_t client = *((esp_mqtt_client_handle_t*)params);
     DHT11_init(GPIO_NUM_5);
     ds18x20_addr_t addrs[MAX_SENSORS];
@@ -88,58 +87,58 @@ void read_sensors(void *params) {
         .pd_sck = PD_SCK_GPIO,
         .gain = HX711_GAIN_A_64
     };
-    
     while(1) {
         struct dht11_reading dht = DHT11_read();
+        if (dht.status != 0) {
+            // TODO fix: This can couse the node hang in this task for ever.
+            err_counter++;
+            if(err_counter > 10) {
+                xQueueSend(eventQueue, (void *)&err_counter, (TickType_t )0);
+            }
+            continue;
+        } else {
+            err_counter = 0;
+        }
+
         sensor_count = ds18x20_scan_devices(SENSOR_GPIO, addrs, MAX_SENSORS);
         if (sensor_count == 1) {
             ds18x20_measure_and_read_multi(SENSOR_GPIO, addrs, sensor_count, ds18x20_temps);
             float temp_c = ds18x20_temps[0];
             data.ds18x20_temp = temp_c;
-            printf("Sensor ds18x20 reports %f deg C\n", temp_c);
         } else {
-            printf("No sensors detected!\n");
+            ESP_LOGE(READING_TAG, "No sensors detected!");
         }
-        while (1)
-        {
+        while (1) {
             esp_err_t r = hx711_init(&hx711_dev);
             if (r == ESP_OK)
                 break;
-            printf("Could not initialize HX711: %d (%s)\n", r, esp_err_to_name(r));
+            ESP_LOGE(READING_TAG,"Could not initialize HX711: %d (%s)\n", r, esp_err_to_name(r));
+            err_counter++;
             vTaskDelay(500 / portTICK_PERIOD_MS);
         }
 
         esp_err_t r = hx711_wait(&hx711_dev, 500);
-        if (r != ESP_OK)
-        {
-            printf("Device not found: %d (%s)\n", r, esp_err_to_name(r));
+        if (r != ESP_OK) {
+            ESP_LOGE(READING_TAG,"Device not found: %d (%s)\n", r, esp_err_to_name(r));
         }
 
         int32_t hx711_data;
         r = hx711_read_data(&hx711_dev, &hx711_data);
-        if (r != ESP_OK)
-        {
-            printf("Could not read data: %d (%s)\n", r, esp_err_to_name(r));
+        if (r != ESP_OK) {
+            continue;
         }
 
-        printf("DHT11 Temperature is %d \n", dht.temperature);
-        printf("DHT11 Humidity is %d\n", dht.humidity);
-        printf("DHT11 Status code is %d\n", dht.status);
-        printf("HX711 Raw data: %d\n", hx711_data);
-
-        esp_event_post(ESP_EVENT_ANY_ID, MQTT_EVENT_CONNECTED, NULL, 0, 0);
         data.raw_hx711_data = hx711_data;
         data.dht11_status = dht.status;
         data.dht_11temperature = dht.temperature;
         data.dht11_humidity = dht.humidity;
-
         esp_mqtt_client_publish(client, "/honey_topic", message(data), 0, 0, 0);
-
         vTaskDelay(10000 / portTICK_PERIOD_MS);
+        err_counter = 2;
+        // Notify the main task that the package was sent.
+        xQueueSend(eventQueue, (void *)&err_counter, (TickType_t )0);
     }
 }
-
-
 
 static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
 {
@@ -271,9 +270,12 @@ void wifi_init_sta(void)
 
 void app_main(void)
 {
-    ESP_LOGI(TAG, "----- Hive status firmware Startup... -----");
+    ESP_LOGI(TAG, "Hive status firmware Startup.");
     ESP_LOGI(TAG, "Free memory: %d bytes", esp_get_free_heap_size());
     ESP_LOGI(TAG, "esp-IDF version: %s", esp_get_idf_version());
+
+    // Event queue used to communicate between sensor and main tasks.
+    eventQueue = xQueueCreate(20, sizeof(unsigned long));
 
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -282,28 +284,33 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
-    /*Wifi module configuration and start method*/
+    //Wifi module configuration and start method
     wifi_init_sta();
 
-
+    //MQTT modue configurantion and start
     esp_mqtt_client_config_t mqtt_cfg = {
         .uri = CONFIG_BROKER_URL,
     };
-
     esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
     esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
     esp_mqtt_client_start(client);
 
+    //Create task responsible of reading and sending environment data.
     xTaskCreate(read_sensors, "read_sensors", configMINIMAL_STACK_SIZE * 4, (void*)&client, 5, NULL);
 
-    const int deep_sleep_sec = 10;
-    vTaskDelay(10000 / portTICK_PERIOD_MS);
-
-    // ESP_ERROR_CHECK(esp_wifi_stop());
-    // ESP_LOGI(TAG, "Entering deep sleep for %d seconds", deep_sleep_sec);
-    // esp_deep_sleep(1000000LL * deep_sleep_sec);
-
-    while (true) {
-        vTaskDelay(1500 / portTICK_PERIOD_MS);
+    const int deep_sleep_sec= 600;
+    uint32_t event;
+    while(true) {
+        xQueueReceive(eventQueue, &event, (TickType_t )(1000/portTICK_PERIOD_MS));
+        vTaskDelay(500/portTICK_PERIOD_MS); //wait for 500 ms
+        if (event == 2){
+            ESP_LOGI(TAG, "Entering deep sleep for %d seconds", deep_sleep_sec);
+            ESP_ERROR_CHECK(esp_mqtt_client_stop(client));
+            ESP_LOGI(TAG, "MQTT client has stopped...");
+            ESP_ERROR_CHECK(esp_wifi_stop());
+            ESP_LOGI(TAG, "Wifi has stopped...");
+            vTaskDelay(10000 / portTICK_PERIOD_MS);
+            esp_deep_sleep(1000000LL * deep_sleep_sec);
+        }
     }
 }
