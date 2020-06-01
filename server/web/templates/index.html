@@ -127,8 +127,6 @@
             weight_cfg
         );
 
-        const source = new EventSource("/chart-data");
-
         fetch('/data')
         .then(response => {
           return response.json()
@@ -146,7 +144,6 @@
                     env_cfg.data.datasets[1].data.push(item.dht_tmp);
                     env_cfg.data.datasets[2].data.push(item.dht_hum);
                     // Weight graph
-                    console.log(date.toLocaleString())
                     weight_cfg.data.labels.push(date.toLocaleString());
                     weight_cfg.data.datasets[0].data.push(item.hx_value);
                 }
@@ -158,17 +155,6 @@
         .catch(err => {
           // Do something for an error here
         })
-
-        source.onmessage = function (event) {
-            const data = JSON.parse(event.data);
-            if (env_cfg.data.labels.length === 20) {
-                env_cfg.data.labels.shift();
-                env_cfg.data.datasets[0].data.shift();
-            }
-            env_cfg.data.labels.push(data.time);
-            env_cfg.data.datasets[0].data.push(data.value);
-            environment.update();
-        }
     });
 </script>
 
