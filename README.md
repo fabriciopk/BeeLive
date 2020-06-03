@@ -1,5 +1,5 @@
 
-# Welcome to honeypal!
+# Welcome to BeeLive!
 
 Hi! Let's take care of our bees.
 
@@ -22,7 +22,5 @@ Hi! Let's take care of our bees.
  - DHT11 - external humidity and temperature sensor
  - HX11 - weight sensor
  - DS18x20 - internal temperature sensor
-
-### Build instructions
 
 
