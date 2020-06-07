@@ -1,0 +1,34 @@
+ <!DOCTYPE html>
+ <html lang="en">
+ <head>
+   <meta charset="utf-8" />
+   <title>
+     BeeLive
+   </title>
+   
+   <meta content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, shrink-to-fit=no' name='viewport' />
+   <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700|Roboto+Slab:400,700|Material+Icons" />
+   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/latest/css/font-awesome.min.css">
+   <link href="/static/assets/css/material-dashboard.css?v=2.1.1" rel="stylesheet" />
+   <link href="/static/assets/demo/demo.css" rel="stylesheet" />
+ 
+   {% block stylesheets %}{% endblock stylesheets %}
+ 
+ </head>
+ 
+<body class="">
+  <div class="wrapper ">
+    {% include 'sidebar.html' %}
+    <div class="main-panel">
+      <div class="content">
+        <div class="container-fluid">
+          {% block content %}{% endblock content %}
+        </div>
+      </div>
+      {% include 'footer.html' %}
+    </div>
+  </div>  
+  {% block javascripts %}{% endblock javascripts %}
+  
+</body>
+</html>

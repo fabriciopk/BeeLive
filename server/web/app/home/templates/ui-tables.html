@@ -1,0 +1,66 @@
+{% extends "base-site.html" %}
+
+{% block title %} UI Tables {% endblock %} 
+
+<!-- Specific Page CSS goes HERE  -->
+{% block stylesheets %}{% endblock stylesheets %}
+
+{% block content %}
+
+        <div class="row">
+            <div class="col-md-12">
+              <div class="card">
+                <div class="card-header card-header-primary">
+                  <h4 class="card-title ">Beehive list</h4>
+                  <p class="card-category">List all beehives available on the system.</p>
+                </div>
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table">
+                      <thead class=" text-primary">
+                        <th>
+                          Beehive ID
+                        </th>
+                        <th>
+                          Hive number
+                        </th>
+                        <th>
+                          Weight
+                        </th>
+                        <th>
+                          City
+                        </th>
+                        <th>
+                          Coordinates
+                        </th>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>
+                            1
+                          </td>
+                          <td>
+                            10
+                          </td>
+                          <td>
+                            25kg
+                          </td>
+                          <td>
+                            Silveira Martins
+                          </td>
+                          <td>
+                            41.40338, 2.17403
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+        </div>
+
+{% endblock content %}
+
+<!-- Specific Page JS goes HERE  -->
+{% block javascripts %}{% endblock javascripts %}

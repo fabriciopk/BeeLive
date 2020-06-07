@@ -17,7 +17,7 @@ COPY requirements.txt /usr/src/app/requirements.txt
 RUN pip install -r requirements.txt
 
 # copy project
-COPY app.py /usr/src/app/
-COPY templates /usr/src/app/templates
+COPY run.py /usr/src/app/
+COPY app /usr/src/app/app
 # run entrypoint.sh
-CMD ["python", "app.py"]
+CMD ["python", "run.py"]
