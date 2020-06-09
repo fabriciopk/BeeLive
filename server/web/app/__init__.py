@@ -16,37 +16,63 @@ def index():
     return render_template('index.html')
 
 
-def do_querey():
-    pass
-
-
-def all_reads(host='influxdb', port=8086):
+def influx_query(query, host='localhost', port=8086):
     """
-    Return all mesurements from a given node.
+    Execute influx db query
     """
-    query = 'select * from pot;'
     user = 'root'
     password = 'root'
     dbname = 'honeycomb'
     client = InfluxDBClient(host, port, user, password, dbname)
-    return list(client.query(query).get_points())
+    return client.query(query)
 
 
-def select_entries(n):
-    pass
+def all_reads():
+    """
+    Return all mesurements from a given node.
+    """
+    q = influx_query("select * from pot;")
+    return list(q.get_points())
+
+
+def select_entries(time_delta):
+    q = influx_query(f"SELECT * FROM pot WHERE time > now() - {time_delta}h")
+    return list(q.get_points())
 
 
 def last_info():
     """
     Returns last info added to db.
     """
-    pass
+    q = influx_query("SELECT * FROM pot GROUP BY * ORDER BY ASC LIMIT 1")
+    return list(q.get_points())
+
+
+def count_readings():
+    q = influx_query("SELECT COUNT(dht_status)  FROM pot;")
+    return list(q.get_points())[0]['count']
+
+
+@application.route('/count')
+def count():
+    return str(count_readings())
+
+
+@application.route('/last_info')
+def count_route():
+    return json.dumps(last_info())
+
 
 
 @application.route('/data')
-def data():
+def data_route():
     data = all_reads()
     return json.dumps(data)
+
+
+@application.route('/data/<time_delta>')
+def entry_route(time_delta):
+    return json.dumps(select_entries(int(time_delta)))
 
 
 @application.route('/chart-data')
