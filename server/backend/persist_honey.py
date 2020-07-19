@@ -11,9 +11,10 @@ def persists(msg):
         sensor_data = loads(msg.payload)
         json_body = [
             {
-                "measurement": "pot",
+                "measurement": "environment_data",
                 "tags": {
-                    "esp-idf-ver": sensor_data['version']
+                    "esp-idf-ver": sensor_data['version'],
+                    "sensor-id": sensor_data['sensor_id']
                 },
                 "time": current_time,
                 "fields": {
@@ -46,9 +47,9 @@ def on_connect(client, userdata, flags, rc):
 # log_level
 
 logging.basicConfig(level=logging.DEBUG)
-influx_client = InfluxDBClient('influxdb', 8086, 'admin', 'teste123', database='honeycomb')
+influx_client = InfluxDBClient('influxdb', 8086, 'admin', 'teste123', database='honey-comb')
 try:
-    influx_client.create_database('honeycomb')
+    influx_client.create_database('honey-comb')
 except:
     pass
 client = mqtt.Client()
