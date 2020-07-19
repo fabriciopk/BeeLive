@@ -12,7 +12,7 @@
               <div class="card">
                 <div class="card-header card-header-primary">
                   <h4 class="card-title ">Beehive list</h4>
-                  <p class="card-category">List all beehives available on the system.</p>
+                  <p class="card-category">List all beehives available on your farm.</p>
                 </div>
                 <div class="card-body">
                   <div class="table-responsive">
@@ -22,7 +22,7 @@
                           Beehive ID
                         </th>
                         <th>
-                          Hive number
+                          Internal Temp
                         </th>
                         <th>
                           Weight
@@ -33,25 +33,21 @@
                         <th>
                           Coordinates
                         </th>
+                        <th>
+                          Last update
+                        </th>
                       </thead>
                       <tbody>
-                        <tr>
-                          <td>
-                            1
-                          </td>
-                          <td>
-                            10
-                          </td>
-                          <td>
-                            25kg
-                          </td>
-                          <td>
-                            Silveira Martins
-                          </td>
-                          <td>
-                            41.40338, 2.17403
-                          </td>
-                        </tr>
+                          {% for behive in farm() %}
+                            <tr>
+                            <td><a href="{{ url_for('beehive', id=behive.get_id) }}"> {{behive.get_id}} </a></td>
+                            <td>{{behive.last_internal_tmp}} °C</td>
+                            <td>{{behive.last_weight}} Kg</td>
+                            <td>Silveira Martins</td>
+                            <td>41.40338, 2.17403</td>
+                            <td>{{behive.last_update}} </td>
+                            </tr>
+                          {% endfor %}
                       </tbody>
                     </table>
                   </div>
