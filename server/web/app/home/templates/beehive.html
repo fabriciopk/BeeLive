@@ -3,7 +3,9 @@
 {% block title %} Dashboard {% endblock %} 
 
 <!-- Specific Page CSS goes HERE  -->
-{% block stylesheets %}{% endblock stylesheets %}
+{% block stylesheets %}
+
+{% endblock stylesheets %}
 
 {% block content %}
 
@@ -12,18 +14,14 @@
         <div class="card card-stats">
           <div class="card-header card-header-warning card-header-icon">
             <div class="card-icon">
-              <i class="material-icons">content_copy</i>
+              <i class='fas fa-temperature-low'></i>
             </div>
-            <p class="card-category">Temperature(°C)</p>
-            <h3 class="card-title">49/50
-              <small>GB</small>
+            <p class="card-category">Temperature</p>
+            <h3 class="card-title">{{bee.last_internal_tmp}}
+              <small>(°C)</small>
             </h3>
           </div>
           <div class="card-footer">
-            <div class="stats">
-              <i class="material-icons text-danger">warning</i>
-              <a href="#pablo">Get More Space...</a>
-            </div>
           </div>
         </div>
       </div>
@@ -31,15 +29,12 @@
         <div class="card card-stats">
           <div class="card-header card-header-success card-header-icon">
             <div class="card-icon">
-              <i class="material-icons">store</i>
+              <i class="fas fa-tint"></i>
             </div>
-            <p class="card-category">Humidity(%)</p>
-            <h3 class="card-title">$34,245</h3>
+            <p class="card-category">Humidity</p>
+            <h3 class="card-title">{{bee.last_internal_hum}}<small>%</small></h3>
           </div>
           <div class="card-footer">
-            <div class="stats">
-              <i class="material-icons">date_range</i> Last 24 Hours
-            </div>
           </div>
         </div>
       </div>
@@ -47,15 +42,12 @@
         <div class="card card-stats">
           <div class="card-header card-header-danger card-header-icon">
             <div class="card-icon">
-              <i class="material-icons">info_outline</i>
+              <i class="fas fa-weight-hanging"></i>
             </div>
-            <p class="card-category">Weight(Kg)</p>
-            <h3 class="card-title">75</h3>
+            <p class="card-category">Weight</p>
+            <h3 class="card-title">{{bee.last_weight}}<small>Kg</small></h3></h3>
           </div>
           <div class="card-footer">
-            <div class="stats">
-              <i class="material-icons">local_offer</i> Tracked from Github
-            </div>
           </div>
         </div>
       </div>
@@ -63,15 +55,12 @@
         <div class="card card-stats">
           <div class="card-header card-header-info card-header-icon">
             <div class="card-icon">
-              <i class="fa fa-twitter"></i>
+              <i class="fas fa-plus"></i>
             </div>
             <p class="card-category">Measurements</p>
-            <h3 class="card-title">+245</h3>
+            <h3 class="card-title">+{{bee.mesurement_cnt()}}</h3>
           </div>
           <div class="card-footer">
-            <div class="stats">
-              <i class="material-icons">update</i> Just Updated
-            </div>
           </div>
         </div>
       </div>
@@ -83,9 +72,9 @@
             <div class="ct-chart" id="dailySalesChart"></div>
           </div>
           <div class="card-body">
-            <h4 class="card-title">Daily Sales</h4>
+            <h4 class="card-title">Temperature statistics</h4>
             <p class="card-category">
-              <span class="text-success"><i class="fa fa-long-arrow-up"></i> 55% </span> increase in today sales.</p>
+              <span class="text-success"><i class="fas fa-long-arrow-alt-up"></i> 10% </span> increase in temperature.</p>
           </div>
           <div class="card-footer">
             <div class="stats">
@@ -100,12 +89,13 @@
             <div class="ct-chart" id="websiteViewsChart"></div>
           </div>
           <div class="card-body">
-            <h4 class="card-title">Email Subscriptions</h4>
-            <p class="card-category">Last Campaign Performance</p>
+            <h4 class="card-title">Weight statistics</h4>
+            <p class="card-category">
+              <span class="text-success"><i class="fas fa-long-arrow-alt-up"></i> 2% </span> increase.</p>
           </div>
           <div class="card-footer">
             <div class="stats">
-              <i class="material-icons">access_time</i> campaign sent 2 days ago
+              <i class="material-icons">access_time</i> updated 4 minutes ago
             </div>
           </div>
         </div>
@@ -116,12 +106,12 @@
             <div class="ct-chart" id="completedTasksChart"></div>
           </div>
           <div class="card-body">
-            <h4 class="card-title">Completed Tasks</h4>
+            <h4 class="card-title">Sensor Helth</h4>
             <p class="card-category">Last Campaign Performance</p>
           </div>
           <div class="card-footer">
             <div class="stats">
-              <i class="material-icons">access_time</i> campaign sent 2 days ago
+              <i class="material-icons">access_time</i> updated 4 minutes ago
             </div>
           </div>
         </div>
@@ -156,6 +146,7 @@
 <!--suppress JSUnresolvedLibraryURL -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.min.js"></script>
 
+<script src='https://kit.fontawesome.com/a076d05399.js'></script>
   <script>
     $(document).ready(function() {
       // Javascript method's body can be found in assets/js/demos.js
@@ -273,7 +264,7 @@
             weight_cfg
         );
 
-        fetch('/data/1')
+        fetch('/data/{{bee.get_id}}')
         .then(response => {
           return response.json()
         })

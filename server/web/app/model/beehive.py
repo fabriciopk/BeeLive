@@ -17,11 +17,15 @@ class BeeHive:
 
     @property
     def last_weight(self):
-        return self._last_mesurement[0]['hx_value']
+        return self._last_mesurement[-1]['hx_value']
     
     @property
     def last_internal_tmp(self):
-        return self._last_mesurement[0]['ds_temp']
+        return self._last_mesurement[-1]['ds_temp']
+
+    @property
+    def last_internal_hum(self):
+        return self._last_mesurement[-1]['dht_hum']
 
     @property
     def coordinates(self):
@@ -51,7 +55,7 @@ class BeeHive:
         """
         Returns last mesurement done by sensor from the given behive.
         """
-        q = influx_query(f"SELECT * FROM {self.measurement} where \"sensor-id\"='{self.sensor_id}' GROUP BY * ORDER BY ASC LIMIT 1")
+        q = influx_query(f"SELECT * FROM {self.measurement} where \"sensor-id\"='{self.sensor_id}' GROUP BY * ORDER BY DESC LIMIT 1")
         return list(q.get_points())
 
     def mesurement_cnt(self):

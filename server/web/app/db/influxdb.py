@@ -1,6 +1,6 @@
 from influxdb import InfluxDBClient
 
-def influx_query(query, host='localhost', port=8086):
+def influx_query(query, host='influxdb', port=8086):
     """
     Execute influx db query
     """

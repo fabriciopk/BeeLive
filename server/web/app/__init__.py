@@ -20,7 +20,7 @@ def index():
 
 @application.route('/beehive/<id>')
 def beehive(id):
-    return render_template('index.html')
+    return render_template('beehive.html', bee=BeeHive(id))
 
 @application.route('/data/<id>')
 def data_route(id):
@@ -41,7 +41,7 @@ def chart_data():
 @application.route('/favicon.ico')
 def favicon():
     return send_from_directory(os.path.join(application.root_path, 'home/static'),
-                               'favicon.ico', mimetype='image/vnd.microsoft.ico')
+                               'bee.ico', mimetype='image/vnd.microsoft.ico')
 
 def create_app():
     module = import_module('app.home.routes')
