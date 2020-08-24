@@ -43,3 +43,9 @@ services:
         depends_on:
             - mqtt
             - influxdb
+        environment:
+            - DB_URL=localhost
+            - DB_USER=admin
+            - DB_PASSW=teste123
+            - DB=honey-comb
+            - MQTT_URL=localhost

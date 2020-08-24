@@ -13,47 +13,53 @@ def persists(msg):
             {
                 "measurement": "environment_data",
                 "tags": {
-                    "esp-idf-ver": sensor_data['version'],
-                    "sensor-id": sensor_data['sensor_id']
+                    "esp-idf-ver": sensor_data["version"],
+                    "sensor-id": sensor_data["sensor_id"]
                 },
                 "time": current_time,
                 "fields": {
-                    "hx_value": int(sensor_data['hx_value']),
-                    "ds_temp": float(sensor_data['ds_temp']),
-                    "dht_status": int(sensor_data['dht_status']),
-                    "dht_tmp": int(sensor_data['dht_tmp']),
-                    "dht_hum": int(sensor_data['dht_hum']),
-
+                    "hx_value": int(sensor_data["hx_value"]),
+                    "ds_temp": float(sensor_data["ds_temp"]),
+                    "dht_status": int(sensor_data["dht_status"]),
+                    "dht_tmp": int(sensor_data["dht_tmp"]),
+                    "dht_hum": int(sensor_data["dht_hum"]),
                 }
             }
         ]
-    except (ValueError, JSONDecodeError) as err:
-        logging.error(f"Not possible to serialize sensor data {err}")
-
-    logging.info(json_body)
-    try:
-        influx_client.write_points(json_body)
-    except Exception as err:
-        logging.error(f"Not possible to serialize sensor data {err}")
+    except (ValueError, KeyError, JSONDecodeError) as err:
+        logging.error(f"Not possible to serialize sensor data: {err}.")
+    except AssertionError:
+        logging.error(f"Wrong system protection key.")
+    else:
+        try:
+            influx_client.write_points(json_body)
+            logging.info(f"Writing to database: {json_body}")
+        except Exception as err:
+            logging.error(f"Not possible to write data to db: {err}.")
 
 def on_connect(client, userdata, flags, rc):
     print("Connected with result code {0}".format(str(rc)))
     client.subscribe("/honey_topic")
 
 
-# TODO: get from os.environ['compose-var']
-# db_password
-# db_username
-# log_level
+if __name__ == '__main__':
+    assert(any([os.environ[i] for i in ["DB_URL", "DB_USER", "DB_PASSW", "DB", "MQTT_URL"]]))
 
-logging.basicConfig(level=logging.DEBUG)
-influx_client = InfluxDBClient('influxdb', 8086, 'admin', 'teste123', database='honey-comb')
-try:
-    influx_client.create_database('honey-comb')
-except:
-    pass
-client = mqtt.Client()
-client.on_connect = on_connect
-client.on_message = lambda client, userdata, msg: persists(msg)
-client.connect("mqtt", 1883, 60)
-client.loop_forever()
+    logging.basicConfig(level=logging.DEBUG)
+    influx_client = InfluxDBClient(
+        os.environ["DB_URL"],
+        8086,
+        os.environ["DB_USER"],
+        os.environ["DB_PASSW"],
+        database=os.environ["DB"]
+    )
+    try:
+        influx_client.create_database("honey-comb")
+    except Exception as err:
+        logging.error(f"Not possible to connect to db: {err}.")
+    else:
+        client = mqtt.Client()
+        client.on_connect = on_connect
+        client.on_message = lambda client, userdata, msg: persists(msg)
+        client.connect(os.environ["MQTT_URL"], 1883, 60)
+        client.loop_forever()
