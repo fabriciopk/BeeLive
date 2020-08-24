@@ -60,10 +60,22 @@ typedef struct {
 QueueHandle_t  eventQueue = NULL;
 
 static char *message(env_data_t data) {
+    uint8_t mac_address[6];
+    char mac_address_string[13];
+	ESP_ERROR_CHECK(esp_read_mac(mac_address, ESP_MAC_WIFI_STA));
+
+    for (int i = 0; i < 6; i++) {
+        char part[3];
+		sprintf(part, "%02x", mac_address[i]);
+		strncpy(&mac_address_string[i * 2], part, 2);
+    }
+    mac_address_string[12] = '\0';
+
     cJSON *root = cJSON_CreateObject();
     esp_chip_info_t chip_info;
     esp_chip_info(&chip_info);
     cJSON_AddStringToObject(root, "version", IDF_VER);
+    cJSON_AddStringToObject(root, "sensor_id", mac_address_string);
     cJSON_AddNumberToObject(root, "hx_value", data.raw_hx711_data);
     cJSON_AddNumberToObject(root, "ds_temp", data.ds18x20_temp);
     cJSON_AddNumberToObject(root, "dht_status", data.dht11_status);
