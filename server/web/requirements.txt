@@ -1,2 +1,3 @@
-Flask==1.1.2
-influxdb
+Flask>=1.1.2
+influxdb>=1.21.1
+gunicorn>=20.0.4

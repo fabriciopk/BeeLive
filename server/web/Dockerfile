@@ -20,4 +20,4 @@ RUN pip install -r requirements.txt
 COPY run.py /usr/src/app/
 COPY app /usr/src/app/app
 # run entrypoint.sh
-CMD ["python", "run.py"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "run:app"]

@@ -1,13 +1,14 @@
 from app.db.influxdb import influx_query
 from app.model.beehive import BeeHive
 
+
 class Farm:
     def __init__(self, measurement="environment_data"):
         self.measurement = measurement
         self._behive_lst = []
 
     def __get_sensor_tag(self):
-        q = influx_query(f"show tag values with key=\"sensor-id\"")
+        q = influx_query(f'show tag values with key="sensor-id"')
         for item, key in q.items():
             if self.measurement in item[0]:
                 for value in key:
@@ -19,7 +20,7 @@ class Farm:
         """
         sensor_id_list = []
         for sensor in self.__get_sensor_tag():
-            sensor_id_list.append(BeeHive(sensor['value']))
+            sensor_id_list.append(BeeHive(sensor["value"]))
         return sensor_id_list
 
     def __iter__(self):

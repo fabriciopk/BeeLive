@@ -144,14 +144,12 @@
 <!--suppress JSUnresolvedLibraryURL -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/js/bootstrap.min.js"></script>
 <!--suppress JSUnresolvedLibraryURL -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
 
 <script src='https://kit.fontawesome.com/a076d05399.js'></script>
   <script>
     $(document).ready(function() {
       // Javascript method's body can be found in assets/js/demos.js
-
-
         const env_cfg = {
             type: 'line',
             data: {
@@ -159,10 +157,13 @@
                 datasets: [
                 {
                     label: "Internal Temperature(°C)",
-                    backgroundColor: 'rgb(255, 99, 132)',
-                    borderColor: 'rgb(255, 99, 132)',
+                    backgroundColor: 'rgb(0, 51, 0)',
+                    borderColor: 'rgb(0, 51, 0)',
                     data: [],
                     fill: false,
+                    lineTension: 0,
+                    borderWidth: 2,
+                    pointRadius: 0,
                 },
                 {
                     label: "External temperature(°C)",
@@ -170,6 +171,9 @@
                     borderColor: 'rgb(255, 0, 0)',
                     data: [],
                     fill: false,
+                    lineTension: 0,
+                    borderWidth: 2,
+                    pointRadius: 0,
                 },
                 {
                     label: "External Humidity(%)",
@@ -177,9 +181,15 @@
                     borderColor: 'rgb(0, 102, 255)',
                     data: [],
                     fill: false,
+                    lineTension: 0,
+                    borderWidth: 2,
+                    pointRadius: 0,
                 }],
             },
             options: {
+                animation: {
+					        duration: 0
+				        },
                 responsive: true,
                 title: {
                     display: true,
@@ -222,7 +232,10 @@
                     backgroundColor: 'rgb(0, 204, 0)',
                     borderColor: 'rgb(0, 204, 0)',
                     data: [],
-                    fill: false
+                    fill: false,
+                    lineTension: 0,
+                    borderWidth: 2,
+                    pointRadius: 0,
                 }
                 ],
             },
@@ -238,6 +251,7 @@
                 },
                 scales: {
                     xAxes: [{
+
                         display: true,
                         scaleLabel: {
                             display: true,
@@ -275,7 +289,11 @@
                 if(item.dht_status == 0){
                     var date = new Date(item.time);
                     // Enviroment graph
-                    date.setMinutes(date.getMinutes() - new Date().getTimezoneOffset());
+                    date.setMinutes(date.getMinutes());
+                    // Lazy removal of outliers. TODO: prevent outliers to be persisted into database
+                    if(item.dht_hum > 100 || item.dht_hum < 0 || item.dht_tmp >= 50 || item.ds_temp < 0.1)
+                      return
+
                     env_cfg.data.labels.push(date.toLocaleString());
                     env_cfg.data.datasets[0].data.push(item.ds_temp);
                     env_cfg.data.datasets[1].data.push(item.dht_tmp);
