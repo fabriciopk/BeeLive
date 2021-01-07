@@ -1,12 +1,13 @@
 from influxdb import InfluxDBClient
 
-def influx_query(query, host='influxdb', port=8086):
+
+def influx_query(query, host="influxdb", port=8086):
     """
     Execute influx db query
     """
-    user = 'root'
-    password = 'root'
-    dbname = 'honey-comb'
+    user = "root"
+    password = "root"
+    dbname = "honey-comb"
     client = InfluxDBClient(host, port, user, password, dbname)
     try:
         return client.query(query)
